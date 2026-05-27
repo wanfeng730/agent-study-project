@@ -1,3 +1,4 @@
+# pytorch 张量创建
 
 import numpy as np
 import torch
@@ -6,6 +7,7 @@ import torch
 # 创建张量：标量
 t1 = torch.tensor(10)
 print(f't1: {t1}, type: {type(t1)}')
+print(f'提取标量：{t1.item()}')
 
 # 创建张量：二维数组
 t2 = torch.tensor([
@@ -75,5 +77,19 @@ t13 = torch.linspace(1, 10, 5)
 print(f't13: {t13}')
 
 
-# 创建随机张量
-t14 = torch
+# 设置随机种子 采用当前系统的时间戳
+# torch.initial_seed()
+# 设置随机种子 指定值
+torch.manual_seed(3)
+
+# 创建随机张量 均匀分布 0~1
+t14 = torch.rand(size=(2, 3))
+print(f't14: {t14}')
+
+# 创建随机张量 正态分布 0~1
+t15 = torch.randn(size=(2, 3))
+print(f't15: {t15}')
+
+# 创建随机张量 均匀分布 int整数类型
+t16 = torch.randint(1, 10, size=(2, 3))
+print(f't16: {t16}')
