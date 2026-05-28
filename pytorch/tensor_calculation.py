@@ -41,3 +41,18 @@ print(f't4: {t4}')
 t5 = t1.matmul(t3)
 # t5 = t1 @ t3
 print(f't5: {t5}')
+
+
+
+# 求和、总和  、
+t7 = t4.sum()           # 整体求和
+t7 = t4.sum(dim=0)      # dim=0 按列求和
+t7 = t4.sum(dim=1)      # dim=1 按行求和
+print(f't7: {t7}')
+
+
+# 平均值  必须为float或double类型
+# dim为维度（dimission）
+t6 = t1.type(torch.float).mean()
+t6 = t3.type(torch.float).mean(dim=0)
+print(f't6: {t6}')
