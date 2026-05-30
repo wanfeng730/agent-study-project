@@ -8,15 +8,15 @@ from langchain.chat_models import init_chat_model
 from langchain_community.chat_models.tongyi import ChatTongyi
 
 # （1）根据模型名称自动判断模型并设定base_url，从环境变量中获取api_key
-model = init_chat_model(model='deepseek-v4-pro')
+# model = init_chat_model(model='deepseek-v4-pro')
 
 # （2）如果langchain没有集成但是兼容了OpenAI的规范，则需要手动设置参数（伪装）
-# model = init_chat_model(
-#     model='kimi-k2.6',
-#     model_provider='openai',
-#     base_url='https://api.moonshot.cn/v1',
-#     api_key=os.getenv('API_KEY_KIMI')
-# )
+model = init_chat_model(
+    model='kimi-k2.6',
+    model_provider='openai',
+    base_url='https://api.moonshot.cn/v1',
+    api_key=os.getenv('API_KEY_KIMI')
+)
 
 # （3）从langchain的社区包中寻找模型类，例如通义千问
 # 官方文档：https://reference.langchain.com/python/langchain-community/chat-models
@@ -32,3 +32,15 @@ model = init_chat_model(model='deepseek-v4-pro')
     ...
 """
 print(f'模型已初始化：{type(model)}')
+
+
+# 模型调用 一次性返回
+# res1 = model.invoke('你是谁')
+# print(f'模型调用返回: {res1}')
+
+# 模型调用 流式返回
+res2 = model.stream('你是谁')
+print('模型调用返回（stream）:\n')
+for chunk in res2:
+    print(chunk.content, end='', flush=True)
+
