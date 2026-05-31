@@ -1,8 +1,11 @@
 import base64
-from typing import cast
+from re import M
+from typing import Literal, cast
+from attr import field
 from dotenv import load_dotenv
 import os
-from pydantic import BaseModel
+from langchain_tavily import TavilySearch
+from pydantic import BaseModel, Field
 import langchain
 
 from langchain_core.globals import set_debug
@@ -11,6 +14,8 @@ from langchain.tools import tool
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_community.chat_models.tongyi import ChatTongyi
+from pydantic_core import to_json
+from torch.cuda import temperature
 
 # 读取文件内容
 def read_file_content(path: str) -> str:
@@ -18,8 +23,8 @@ def read_file_content(path: str) -> str:
         content = file.read()
         return content;
 
-# 开启调试模式，会在控制台打印完整的 API 请求体
-set_debug(True)
+# 开启langchain调试模式，会在控制台打印完整的 API 请求体
+# set_debug(True)
 
 # 加载环境变量
 load_dotenv()
@@ -39,6 +44,7 @@ load_dotenv()
     max_retries: 控制生成文本的最大重试次数
     ...
 """
+# model = init_chat_model(model='deepseek-v4-pro')
 model = init_chat_model(
     model='deepseek-v4-pro', 
     # ----- 透传参数 **kwargs -----
@@ -63,16 +69,56 @@ print(f'模型已初始化：{type(model)}')
 
 ### 二、定义工具函数
 """
-（1）函数内必须要写明函数作用的注释
+自定义工具函数
+    函数名需直接指明作用，以便模型推理
+    函数的doc注释详细描述作用，参数说明
+    
+    （1）根据docstring描述函数用途
+    （2）使用pydantic描述函数用途
+        Field：字段说明
+        Literal：限定取值枚举
+
+LangChain内置工具
+    官方文档：https://docs.langchain.com/oss/python/integrations/tools
+    （1）内置工具可能包含大量未使用的参数描述，造成token浪费。解决：可以使用自定义的tool封装内置工具调用，减少参数描述
 """
 @tool
 def get_weather(location: str) -> str:
-    """
-    Get the weather in a given location
+    """根据地区名获取当前天气描述
+
     Args:
-        location: city name or coordinates
+        location (str): 地区名
+
+    Returns:
+        str: 天气描述
     """
+    print(f'调用工具 get_weather location={location}')
     return f'Current weather in {location} is sunny'
+
+# 使用pydantic描述定义函数参数信息
+class WeatherInfo(BaseModel):
+    location: str = Field(description="地区名")
+    temperature_unit: Literal["摄氏度","华氏度"] = Field(description='温度单位', default="摄氏度")
+    is_include_humidity: bool = Field(description='是否查询湿度', default=False)
+
+# 在tool函数中绑定定义的函数参数信息
+@tool(args_schema=WeatherInfo)
+def get_weather_better(location: str, temperature_unit: str = "摄氏度", is_include_humidity: bool = False) -> str:
+    """获取某个地区的详细信息
+    """
+    tem = 28 if temperature_unit == '摄氏度' else 78
+    result = f'{location} 现在的天气是晴天, 温度为{tem}{temperature_unit}'
+    if is_include_humidity:
+        result += ', 湿度为67%'
+    return result;
+
+# langchain内置工具 Tavily网页搜索
+search_tool = TavilySearch(
+    max_results=5,
+    topic="general",
+)
+    
+        
 
 
 
@@ -83,7 +129,7 @@ Args：
     tools           可用的工具函数
     system_prompt   设定Agent统一使用的系统提示词，在调用时会将提示词发送给模型（SystemMessage）
     response_format 结构化输出的类
-        - 若设定了此参数，langchain调用模型时会添加参数 tool_choice: "required"，可能与开启思考模式冲突
+        - 若设定了此参数，langchain调用模型时会添加参数 tool_choice: "required"，可能会与模型的思考模式冲突
 """
 class GlbyAnswerInfo(BaseModel):
     date: str
@@ -96,9 +142,11 @@ print(f'系统提示词：\n{system_prompt}\n')
 # agent = create_agent(model='deepseek-v4-pro', tools=[get_weather])
 agent = create_agent(
     model=model, 
-    tools=[get_weather],
     system_prompt=system_prompt,
     response_format=GlbyAnswerInfo,
+    tools=[
+        get_weather_better
+    ]
 )
 print(f'智能体对象已创建: {type(agent)}')
 
@@ -182,22 +230,38 @@ def test_invoke_image():
             print(token.content, end='', flush=True)
 
 def test_invoke_structured_response_glby(query: str):
+
     res = agent.invoke({
         "messages":[
             HumanMessage(query)
         ]
     })
-    print(f'模型调用结果：{res}')
-    
+    for message in res['messages']:
+        message.pretty_print()
+    print()
     # answer = res['structured_response']
     # 可以使用强制转换定义类型
     answer = cast(GlbyAnswerInfo, res['structured_response'])
     print(f'已解析模型结构化输出: \n  当前心情值为{answer.feeling}\n  她说：{answer.content}')
 
 
+def test_stream_memory(query: str):
+    res = agent.stream({
+        "messages": [
+            {"role": "user", "content": query}
+        ]
+    }, stream_mode='messages')
+    # print(f'模型调用返回：{type(res)}')
+    # 流式输出回答
+    for token, metadata in res:
+        if token.content:
+            print(token.content, end='', flush=True)
 
 
 print('开始智能体对象调用...')
-test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
+# test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
+# print(f'搜索工具测试：{search_tool.invoke("凑企鹅是什么梗？")}')
+
+test_invoke_structured_response_glby('咕咕嘎嘎这个梗是什么意思？')
 
 
