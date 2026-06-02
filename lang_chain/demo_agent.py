@@ -1,6 +1,8 @@
 import base64
+from concurrent.futures import thread
 from re import M
-from typing import Literal, cast
+import sqlite3
+from typing import Any, Literal, cast
 from attr import field
 from dotenv import load_dotenv
 import os
@@ -14,6 +16,8 @@ from langchain.tools import tool
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_community.chat_models.tongyi import ChatTongyi
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic_core import to_json
 from torch.cuda import temperature
 
@@ -130,6 +134,10 @@ Args：
     system_prompt   设定Agent统一使用的系统提示词，在调用时会将提示词发送给模型（SystemMessage）
     response_format 结构化输出的类
         - 若设定了此参数，langchain调用模型时会添加参数 tool_choice: "required"，可能会与模型的思考模式冲突
+    checkpointer    设置会话记忆的模式
+
+配置线程id（会话id）
+    thread_config = {"configurable": {"thread_id": "1"}}
 """
 class GlbyAnswerInfo(BaseModel):
     date: str
@@ -139,6 +147,14 @@ class GlbyAnswerInfo(BaseModel):
 
 system_prompt = read_file_content('resources/prompt_glby.md')
 print(f'系统提示词：\n{system_prompt}\n')
+
+# 初始化sqlite连接  check_same_thread=False：关闭同一线程检查防止报错
+sqlite_connection = sqlite3.connect('resources/demo_agent_checkpointer.db', check_same_thread=False)
+sqlite_checkpointer = SqliteSaver(sqlite_connection)
+# 自动建表
+sqlite_checkpointer.setup()
+
+
 # agent = create_agent(model='deepseek-v4-pro', tools=[get_weather])
 agent = create_agent(
     model=model, 
@@ -146,19 +162,30 @@ agent = create_agent(
     response_format=GlbyAnswerInfo,
     tools=[
         get_weather_better
-    ]
+    ],
+    checkpointer=sqlite_checkpointer
 )
+
+
+
 print(f'智能体对象已创建: {type(agent)}')
 
 
 
 ### 四、调用Agent
 """
-（1）invoke(input) 阻塞式返回
-（2）stream(input, stream_mode) 流式返回
+invoke() 阻塞式返回
+Args:
+    input       消息内容
+    config      调用时的配置
+    
+
+stream(input, stream_mode) 流式返回
 
 可以使用BaseMessage的子类来封装传递不同角色的消息内容：AIMessage, HumanMessage, SystemMessage
 """
+invoke_config = {"configurable": {"thread_id": "06021015"}}
+
 def test_invoke1():
     res = agent.invoke({
         "messages": [
@@ -230,7 +257,6 @@ def test_invoke_image():
             print(token.content, end='', flush=True)
 
 def test_invoke_structured_response_glby(query: str):
-
     res = agent.invoke({
         "messages":[
             HumanMessage(query)
@@ -244,24 +270,23 @@ def test_invoke_structured_response_glby(query: str):
     answer = cast(GlbyAnswerInfo, res['structured_response'])
     print(f'已解析模型结构化输出: \n  当前心情值为{answer.feeling}\n  她说：{answer.content}')
 
-
-def test_stream_memory(query: str):
-    res = agent.stream({
-        "messages": [
-            {"role": "user", "content": query}
-        ]
-    }, stream_mode='messages')
-    # print(f'模型调用返回：{type(res)}')
-    # 流式输出回答
-    for token, metadata in res:
-        if token.content:
-            print(token.content, end='', flush=True)
-
+def test_invoke_checkpointer(query: str, invoke_config: Any):
+    data = {
+        "messages":[
+            HumanMessage(query)
+        ],
+    }
+    res = agent.invoke(data, config=invoke_config)
+    for message in res['messages']:
+        message.pretty_print()
+    print()
 
 print('开始智能体对象调用...')
 # test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
 # print(f'搜索工具测试：{search_tool.invoke("凑企鹅是什么梗？")}')
 
-test_invoke_structured_response_glby('咕咕嘎嘎这个梗是什么意思？')
+# test_invoke_structured_response_glby('咕咕嘎嘎这个梗是什么意思？')
+
+test_invoke_checkpointer('你还记得我的职业是什么吗？', invoke_config=invoke_config)
 
 
