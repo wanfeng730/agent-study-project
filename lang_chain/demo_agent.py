@@ -1,25 +1,21 @@
 import base64
-from concurrent.futures import thread
-from re import M
 import sqlite3
 from typing import Any, Literal, cast
-from attr import field
 from dotenv import load_dotenv
 import os
+from huggingface_hub import SummarizationInput
 from langchain_tavily import TavilySearch
 from pydantic import BaseModel, Field
-import langchain
 
 from langchain_core.globals import set_debug
 from langchain.messages import AIMessage, HumanMessage, SystemMessage
 from langchain.tools import tool
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
+from langchain.agents.middleware import SummarizationMiddleware
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
-from pydantic_core import to_json
-from torch.cuda import temperature
 
 # 读取文件内容
 def read_file_content(path: str) -> str:
@@ -49,23 +45,43 @@ load_dotenv()
     ...
 """
 # model = init_chat_model(model='deepseek-v4-pro')
-model = init_chat_model(
-    model='deepseek-v4-pro', 
-    # ----- 透传参数 **kwargs -----
-    temperature=1.5,      
-    max_tokens=4096,
-    top_p=0.9,
-    timeout=60,
-    max_retries=2,
-    extra_body={"thinking": {"type": "disabled"}} # DeepSeek模型禁用思考模式
-)
+
+# model = init_chat_model(
+#     model='deepseek-v4-pro', 
+#     # ----- 透传参数 **kwargs -----
+#     temperature=1.5,      
+#     max_tokens=4096,
+#     top_p=0.9,
+#     timeout=60,
+#     max_retries=2,
+#     extra_body={"thinking": {"type": "disabled"}} # DeepSeek模型禁用思考模式
+# )
+
 # model = init_chat_model(
 #     model='kimi-k2.6',
 #     model_provider='openai',
 #     base_url='https://api.moonshot.cn/v1',
 #     api_key=os.getenv('API_KEY_KIMI'),
 # )
+
+model = init_chat_model(
+    model='qwen-plus',
+    model_provider='openai',
+    base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
+    api_key=os.getenv('DASHSCOPE_API_KEY'),
+
+    temperature=1.5,
+    max_tokens=4096,
+    top_p=0.9,
+    timeout=60,
+    max_retries=2,
+    extra_body={
+        'enable_thinking': False
+    }
+)
+
 # model = ChatTongyi(model='qwen-max')
+
 print(f'模型已初始化：{type(model)}')
 
 
@@ -135,6 +151,8 @@ Args：
     response_format 结构化输出的类
         - 若设定了此参数，langchain调用模型时会添加参数 tool_choice: "required"，可能会与模型的思考模式冲突
     checkpointer    设置会话记忆的模式
+    middleware      配置中间件
+        - SummarizationMiddleware   总结摘要历史消息中间件
 
 配置线程id（会话id）
     thread_config = {"configurable": {"thread_id": "1"}}
@@ -146,7 +164,7 @@ class GlbyAnswerInfo(BaseModel):
     content: str
 
 system_prompt = read_file_content('resources/prompt_glby.md')
-print(f'系统提示词：\n{system_prompt}\n')
+print(f'读取系统提示词 len={len(system_prompt)}')
 
 # 初始化sqlite连接  check_same_thread=False：关闭同一线程检查防止报错
 sqlite_connection = sqlite3.connect('resources/demo_agent_checkpointer.db', check_same_thread=False)
@@ -154,19 +172,26 @@ sqlite_checkpointer = SqliteSaver(sqlite_connection)
 # 自动建表
 sqlite_checkpointer.setup()
 
+# 总结摘要中间件    trigger 触发条件、keep 需要保持的状态
+middileware = SummarizationMiddleware(
+    model=model,
+    trigger=('tokens', 600),
+    keep=('messages', 20)
+)
 
 # agent = create_agent(model='deepseek-v4-pro', tools=[get_weather])
-agent = create_agent(
+agent = create_agent( 
     model=model, 
     system_prompt=system_prompt,
     response_format=GlbyAnswerInfo,
     tools=[
         get_weather_better
     ],
-    checkpointer=sqlite_checkpointer
+    checkpointer=sqlite_checkpointer,
+    middleware=[
+        middileware
+    ]
 )
-
-
 
 print(f'智能体对象已创建: {type(agent)}')
 
@@ -277,9 +302,9 @@ def test_invoke_checkpointer(query: str, invoke_config: Any):
         ],
     }
     res = agent.invoke(data, config=invoke_config)
-    for message in res['messages']:
-        message.pretty_print()
-    print()
+    # for message in res['messages']:
+    #     message.pretty_print()
+    print(f'调用结果：{res}')
 
 print('开始智能体对象调用...')
 # test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
