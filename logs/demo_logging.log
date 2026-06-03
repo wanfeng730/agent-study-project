@@ -1,0 +1,43 @@
+ 2026/06/03 04:04:15 INFO [demo_logging.py: 13]: testtest 
+2026/06/03 04:10:1780474238,3d INFO [logging_saf.py: 45]: testest
+2026-06-03 16:11:18,uuu INFO [logging_saf.py: 45]: testest
+2026-06-03 16:13:34.150 INFO [logging_saf.py: 45]: testest
+2026-06-03 16:13:34.150 ERROR [logging_saf.py: 47]: testest
+2026-06-03 16:13:34.150 ERROR [logging_saf.py: 48]: testest
+2026-06-03 16:13:34.150 WARNING [logging_saf.py: 49]: testest
+2026-06-03 16:13:34.150 WARNING [logging_saf.py: 50]: testest
+2026-06-03 16:14:26.575    INFO [logging_saf.py: 45]: testest
+2026-06-03 16:14:26.575   ERROR [logging_saf.py: 47]: testest
+2026-06-03 16:14:26.575   ERROR [logging_saf.py: 48]: testest
+2026-06-03 16:14:26.576 WARNING [logging_saf.py: 49]: testest
+2026-06-03 16:14:26.576 WARNING [logging_saf.py: 50]: testest
+2026-06-03 16:15:05.036  INFO [logging_saf.py: 45]: testest
+2026-06-03 16:15:05.036 ERROR [logging_saf.py: 47]: testest
+2026-06-03 16:15:05.036 ERROR [logging_saf.py: 48]: testest
+2026-06-03 16:20:28.330 INFO [logging_saf.py: 95]: testest
+2026-06-03 16:20:28.332 ERROR [logging_saf.py: 97]: testest
+2026-06-03 16:20:28.332 ERROR [logging_saf.py: 98]: testest
+2026-06-03 16:21:06.056  INFO [logging_saf.py: 95]: testest
+2026-06-03 16:21:06.057 ERROR [logging_saf.py: 97]: testest
+2026-06-03 16:21:06.057 ERROR [logging_saf.py: 98]: testest
+2026-06-03 16:21:14.667  INFO [logging_saf.py: 95]: testest
+2026-06-03 16:21:14.667 ERROR [logging_saf.py: 97]: testest
+2026-06-03 16:21:14.667 ERROR [logging_saf.py: 98]: testest
+2026-06-03 16:22:25.074 INFO  [logging_saf.py: 95]: testest
+2026-06-03 16:22:25.074 ERROR [logging_saf.py: 97]: testest
+2026-06-03 16:22:25.074 ERROR [logging_saf.py: 98]: testest
+2026-06-03 16:25:22.339 INFO  [logging_saf.py: 95]: testest
+2026-06-03 16:25:22.339 ERROR [logging_saf.py: 97]: testest
+2026-06-03 16:25:22.339 ERROR [logging_saf.py: 98]: testest
+2026-06-03 16:45:51.661 INFO  [logging_saf.py: 96]: testest
+2026-06-03 16:45:51.661 ERROR [logging_saf.py: 98]: testest
+2026-06-03 16:45:51.661 ERROR [logging_saf.py: 99]: testest
+2026-06-03 16:45:52.783 INFO  [demo_cook_manager.py: 41]: 模型已初始化：<class 'langchain_openai.chat_models.base.ChatOpenAI'>
+2026-06-03 16:45:52.784 INFO  [demo_cook_manager.py: 56]: 读取系统提示词 len=180
+2026-06-03 16:45:52.788 INFO  [demo_cook_manager.py: 66]: 智能体已创建: <class 'langgraph.graph.state.CompiledStateGraph'>
+2026-06-03 16:46:49.204 INFO  [demo_cook_manager.py: 41]: 模型已初始化：<class 'langchain_openai.chat_models.base.ChatOpenAI'>
+2026-06-03 16:46:49.204 INFO  [demo_cook_manager.py: 56]: 读取系统提示词 len=180
+2026-06-03 16:46:49.207 INFO  [demo_cook_manager.py: 66]: 智能体已创建: <class 'langgraph.graph.state.CompiledStateGraph'>
+[demo_cook_manager.py: 41] 2026-06-03 16:49:00.504 INFO  : 模型已初始化：<class 'langchain_openai.chat_models.base.ChatOpenAI'>
+[demo_cook_manager.py: 56] 2026-06-03 16:49:00.505 INFO  : 读取系统提示词 len=180
+[demo_cook_manager.py: 66] 2026-06-03 16:49:00.508 INFO  : 智能体已创建: <class 'langgraph.graph.state.CompiledStateGraph'>
