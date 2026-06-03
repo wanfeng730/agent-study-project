@@ -9,7 +9,7 @@ from typing import Any, Literal, cast
 from dotenv import load_dotenv
 import os, sys
 
-from langchain.messages import HumanMessage, ImageContentBlock
+from langchain.messages import AIMessageChunk, HumanMessage, ImageContentBlock
 
 # 添加项目根目录（python_base 的父目录）到 Python 路径  os.path.dirname(...) 获取上级目录
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,12 +36,21 @@ log = init_logging(log_file='logs/demo_cook_manager.log')
 
 # 初始化模型
 model = init_chat_model(
-    model='kimi-k2.6',
+    model='qwen-plus',
     model_provider='openai',
-    base_url='https://api.moonshot.cn/v1',
-    api_key=os.getenv('API_KEY_KIMI'),
+    base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
+    api_key=os.getenv('DASHSCOPE_API_KEY'),
+
+    temperature=1.5,
+    max_tokens=4096,
+    top_p=0.9,
+    timeout=60,
+    max_retries=2,
+    extra_body={
+        'enable_thinking': False
+    }
 )
-log.info(f'模型已初始化：{type(model)}')
+log.info(f'模型已初始化：{model}')
 
 # 工具：Tavily网页搜索
 search_tool = TavilySearch(
@@ -66,26 +75,45 @@ agent = create_agent(
         search_tool
     ],
 )
-log.info(f'智能体已创建: {type(agent)}')
+log.info(f'智能体已创建: {agent}')
 
 
 # 调用测试
 user_query = '我现在冰箱里有豆腐、紫菜、鸡蛋、黄瓜、皮蛋，还有半盒牛奶、一小瓶老干妈辣椒酱'
-image_url = image_to_base64_url('')
+# image_url = image_to_base64_url('')
 
-human_message = HumanMessage(content=[
-    {
-        "type": "image_url", # <-- 使用 image_url 类型来上传图片，内容为使用 base64 编码过的图片内容
-        "image_url": {"url": image_url},
-    },
-    {
-        "type": "text",
-        "text": user_query, # <-- 使用 text 类型来提供文字指令，例如"描述图片内容"
-    },
-])
+# human_message = HumanMessage(content=[
+#     {
+#         "type": "image_url", # <-- 使用 image_url 类型来上传图片，内容为使用 base64 编码过的图片内容
+#         "image_url": {"url": image_url},
+#     },
+#     {
+#         "type": "text",
+#         "text": user_query, # <-- 使用 text 类型来提供文字指令，例如"描述图片内容"
+#     },
+# ])
+human_message = HumanMessage(content=user_query)
 
-agent.invoke({
+res = agent.stream({
     'messages': [
         human_message
     ]
-})
+}, stream_mode='messages')
+
+log.info('智能体调用返回')
+for data in res:
+    # chunk 通常是 (AIMessageChunk, metadata) 元组
+    chunk: AIMessageChunk = data[0]
+    metadata = data[1]
+    # 模型返回内容
+    content = str(chunk.content) if chunk.content else ''
+
+    # 空字符串
+    if not content:
+        continue
+    # json数据，工具调用结果
+    if content.startswith('{') and content.endswith('}'):
+        log.info(f'智能体工具调用\n{content}')
+        continue
+    # 模型回答结果
+    print(content, end='', flush=True)
