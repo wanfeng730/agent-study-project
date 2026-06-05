@@ -16,6 +16,7 @@ from langchain.agents.middleware import SummarizationMiddleware
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.postgres import PostgresSaver
 
 # 读取文件内容
 def read_file_content(path: str) -> str:
@@ -274,7 +275,8 @@ def test_invoke_image():
         },
     ])
     res = agent.stream(
-        { "messages": [image_message]},
+        input={ "messages": [image_message]},
+        config=invoke_config,
         stream_mode='messages'
     )
     for token, metadata in res:
