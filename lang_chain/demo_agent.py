@@ -16,7 +16,7 @@ from langchain.agents.middleware import SummarizationMiddleware
 from langchain_community.chat_models.tongyi import ChatTongyi
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langgraph.checkpoint.postgres import PostgresSaver
+
 
 # 读取文件内容
 def read_file_content(path: str) -> str:
@@ -308,12 +308,14 @@ def test_invoke_checkpointer(query: str, invoke_config: Any):
     #     message.pretty_print()
     print(f'调用结果：{res}')
 
-print('开始智能体对象调用...')
+print('开始测试...')
+
 # test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
 # print(f'搜索工具测试：{search_tool.invoke("凑企鹅是什么梗？")}')
 
 # test_invoke_structured_response_glby('咕咕嘎嘎这个梗是什么意思？')
 
-test_invoke_checkpointer('你还记得我的职业是什么吗？', invoke_config=invoke_config)
+# test_invoke_checkpointer('你还记得我的职业是什么吗？', invoke_config=invoke_config)
+
 
 
