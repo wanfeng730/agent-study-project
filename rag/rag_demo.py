@@ -20,14 +20,14 @@ cross_encoder = CrossEncoder('cross-encoder/mmarco-mMiniLMv2-L12-H384-V1')
 
 # 分片
 def split_chunks(doc_file_path: str) -> List[str]:
-	with open(doc_file_path, 'r') as file:
-			content = file.read();
-	return [chunk for chunk in content.split("\n\n")];
+    with open(doc_file_path, 'r') as file:
+            content = file.read()
+    return [chunk for chunk in content.split("\n\n")]
 
 # 索引：计算片段的向量值
 def to_vector(chunk: str) -> List[float]:
     embed_vectors = embedding_model.encode(chunk)
-    return embed_vectors.tolist();
+    return embed_vectors.tolist()
 
 # 保存到向量数据库
 def save_vector_to_db(chunks: List[str], vectors: List[List[float]]) -> None:
