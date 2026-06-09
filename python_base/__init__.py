@@ -1,7 +1,7 @@
 import inspect
 
 # 从 python文件导入主要功能
-from .logging_saf import init_logging
+from .logging_saf import init_root_logger
 from .image_utils import image_to_base64_url
 
 from . import date_util
@@ -9,7 +9,7 @@ from . import date_util
 
 # 定义 __all__ 指定导出的内容
 __all__ = [
-    'init_logging',
+    'init_root_logger',
     'image_to_base64_url'
 ]
 

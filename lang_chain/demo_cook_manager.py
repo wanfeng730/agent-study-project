@@ -23,7 +23,7 @@ from langchain_tavily import TavilySearch
 from langchain.chat_models import init_chat_model
 
 # 自定义模块
-from python_base import init_logging, image_to_base64_url
+from python_base import init_root_logger, image_to_base64_url
 from python_base.date_util import *
 
 # 读取文件内容
@@ -35,7 +35,7 @@ def read_file_content(path: str) -> str:
 # 加载环境变量
 load_dotenv()
 # 初始化日志配置
-log = init_logging(log_file='logs/demo_cook_manager.log')
+log = init_root_logger(log_file='logs/demo_cook_manager.log')
 
 
 # 初始化模型

@@ -1,0 +1,9 @@
+{
+	"name": "wanfeng",
+	"age": 24,
+	"hobby": ["唱", "跳", "rap", "篮球"],
+	"extra": {
+		"addr": "杭州",
+		"tel": "134"
+	}
+}

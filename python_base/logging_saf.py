@@ -50,7 +50,7 @@ class ColorfulFormatter(logging.Formatter):
 
 
 
-def init_logging(log_file='logs/logging_saf.log', log_level=logging.INFO):
+def init_root_logger(log_file='logs/logging_saf.log', log_level=logging.INFO):
     """配置日志：同时输出到控制台和文件"""
     
     # 创建日志目录
@@ -89,16 +89,3 @@ def init_logging(log_file='logs/logging_saf.log', log_level=logging.INFO):
     # 添加 Handlers
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-    return logger
-
-
-def main():
-    log = init_logging()
-    log.info('testest')
-    log.debug('testest')
-    log.error('testest')
-    log.error('testest')
-    return
-
-if __name__ == "__main__":
-    main()
