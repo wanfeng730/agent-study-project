@@ -4,10 +4,12 @@ from dotenv import load_dotenv
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_community.document_loaders import TextLoader
 from langchain_chroma import Chroma
+from langchain_core.documents import Document
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompt_values import PromptValue
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from init_chat_models import model_qwen_plus
 
@@ -105,13 +107,18 @@ user_query = "关于法涅斯的背景是什么"
 #   query: 查询的文本
 #   k：匹配数量
 #   filter: 过滤Document中元数据的条件，搜索结果只返回符合条件的Document
-search_docs = vector_store.similarity_search(
-    query="法涅斯",
-    k=3,
-    filter={ "source": 'resources/Teyvathis.md' }
-)
-refer_context = [doc.page_content for doc in search_docs] # 参考文本的格式可以适当优化
+
+# search_docs = vector_store.similarity_search(
+#     query="法涅斯",
+#     k=3,
+#     filter={ "source": 'resources/Teyvathis.md' }
+# )
+# refer_context = [doc.page_content for doc in search_docs] # 参考文本的格式可以适当优化
 # print(f"检索结果：{refer_context}")
+
+# 将向量存储作为一个入链节点（retriever：检索器）
+retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+
 
 
 
@@ -121,13 +128,31 @@ def print_prompt(prompt_value: PromptValue) -> PromptValue:
     print(f"提示词: {prompt_value}")
     print()
     return prompt_value
-
+# 对话模型
 chat_model = model_qwen_plus()
-chain = prompt_template | print_prompt | chat_model | StrOutputParser()
 
-res = chain.invoke(
-    { "query": user_query, "context": refer_context }
-)
+# chain = prompt_template | print_prompt | chat_model | StrOutputParser()
+# res = chain.invoke({ "query": user_query, "context": refer_context })
+
+def retriever_result_to_str(docs: list[Document]) -> str:
+    if not docs or len(docs) == 0:
+        return '无'
+    refer_context = [doc.page_content for doc in docs]
+    return str(refer_context)
+
+# 检索器入链
+#   retriever_node是一个字典，字典中每个参数值由不同的链完成数据生成
+#   当数据走到retriever_node这个节点时，每个实现了Runnable的的参数值都会接收入参并执行链的流程
+
+# RunnablePassthrough()：直接接收入参并赋值
+retriever_node = {"query": RunnablePassthrough(), "context": retriever | RunnableLambda(retriever_result_to_str)}
+
+
+chain2 = retriever_node | prompt_template | print_prompt | chat_model | StrOutputParser()
+
+# 对于chain2，用户提问会被RunnablePassthrough()和retriever两个节点接收，从而生成字典，用于提示词格式化
+res = chain2.invoke(user_query)
+
 print(f"回答结果：{res}")
 
 
