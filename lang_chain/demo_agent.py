@@ -207,6 +207,10 @@ Args:
     
 
 stream(input, stream_mode) 流式返回
+    stream_mode参数
+        "values"：提供 Agent 执行过程中，每一步之后的完整内部状态（State）作为输出。
+        "messages":实时看到大模型“正在说什么”，实现打字机效果。
+        
 
 可以使用BaseMessage的子类来封装传递不同角色的消息内容：AIMessage, HumanMessage, SystemMessage
 """
