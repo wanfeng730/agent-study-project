@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+
 
 # https://docs.python.org/3/library/logging.html#logrecord-attributes
 
@@ -83,7 +85,7 @@ def init_root_logger(log_file='logs/logging_saf.log', log_level=logging.INFO):
     file_handler.setLevel(log_level)
     file_handler.setFormatter(file_formatter)
     # 控制台 Handler
-    console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler(stream=sys.stdout)
     console_handler.setLevel(log_level)
     console_handler.setFormatter(console_formatter)
     # 添加 Handlers

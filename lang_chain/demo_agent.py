@@ -4,6 +4,7 @@ from typing import Any, Literal, cast
 from dotenv import load_dotenv
 import os
 
+from langchain_core.runnables import RunnableConfig
 from langchain_tavily import TavilySearch
 from pydantic import BaseModel, Field
 
@@ -17,18 +18,19 @@ from langchain_community.chat_models.tongyi import ChatTongyi
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-
-# 读取文件内容
-def read_file_content(path: str) -> str:
-    with open(path, 'r', encoding='utf-8') as file:
-        content = file.read()
-        return content;
+from lang_chain.init_middlewares import log_before_agent, log_after_agent, log_before_model, log_after_model, \
+    retry_on_error, log_tool_call
+from lang_chain.utils import read_file_content
+from python_base import init_root_logger
 
 # 开启langchain调试模式，会在控制台打印完整的 API 请求体
 # set_debug(True)
 
 # 加载环境变量
 load_dotenv()
+
+# 日志输出配置
+init_root_logger("logs/demo_agent.log")
 
 ### 一、初始化模型
 """
@@ -144,20 +146,18 @@ search_tool = TavilySearch(
 
 
 ### 三、创建智能体对象
-"""
-Args：
-    model           已初始化的模型对象 / langchain兼容的模型名称
-    tools           可用的工具函数
-    system_prompt   设定Agent统一使用的系统提示词，在调用时会将提示词发送给模型（SystemMessage）
-    response_format 结构化输出的类
-        - 若设定了此参数，langchain调用模型时会添加参数 tool_choice: "required"，可能会与模型的思考模式冲突
-    checkpointer    设置会话记忆的模式
-    middleware      配置中间件
-        - SummarizationMiddleware   总结摘要历史消息中间件
+# create_agent()
+# Args：
+#     model           已初始化的模型对象 / langchain兼容的模型名称
+#     tools           可用的工具函数
+#     system_prompt   设定Agent统一使用的系统提示词，在调用时会将提示词发送给模型（SystemMessage）
+#     response_format 结构化输出的类
+#         - 若设定了此参数，langchain调用模型时会添加参数 tool_choice: "required"，可能会与模型的思考模式冲突
+#     checkpointer    设置会话记忆的模式
+#     middleware      配置中间件
+#         - SummarizationMiddleware   总结摘要历史消息中间件
+#
 
-配置线程id（会话id）
-    thread_config = {"configurable": {"thread_id": "1"}}
-"""
 class GlbyAnswerInfo(BaseModel):
     date: str
     weather: str
@@ -168,13 +168,14 @@ system_prompt = read_file_content('resources/prompt_glby.md')
 print(f'读取系统提示词 len={len(system_prompt)}')
 
 # 初始化sqlite连接  check_same_thread=False：关闭同一线程检查防止报错
-sqlite_connection = sqlite3.connect('resources/demo_agent_checkpointer.db', check_same_thread=False)
+sqlite_connection = sqlite3.connect('db/demo_agent_checkpointer.db', check_same_thread=False)
 sqlite_checkpointer = SqliteSaver(sqlite_connection)
-# 自动建表
-sqlite_checkpointer.setup()
+sqlite_checkpointer.setup()     # 自动建表
 
-# 总结摘要中间件    trigger 触发条件、keep 需要保持的状态
-middileware = SummarizationMiddleware(
+# 总结摘要中间件
+#   trigger：触发条件
+#   keep：需要保持的状态
+summarization_middleware = SummarizationMiddleware(
     model=model,
     trigger=('tokens', 600),
     keep=('messages', 20)
@@ -190,31 +191,45 @@ agent = create_agent(
     ],
     checkpointer=sqlite_checkpointer,
     middleware=[
-        middileware
-    ]
-)
+        summarization_middleware,
+        log_before_agent,
+        log_after_agent,
+        log_before_model,
+        log_after_model,
+        retry_on_error,
+        log_tool_call
+    ])
 
 print(f'智能体对象已创建: {type(agent)}')
 
 
 
 ### 四、调用Agent
-"""
-invoke() 阻塞式返回
-Args:
-    input       消息内容
-    config      调用时的配置
-    
+#
+# invoke() 阻塞式返回
+# Args:
+#   input: 消息内容，dict类型
+#       "messages": 包含若干个消息的数组，消息可用dict、tuple、BaseMessage封装类传入（系统提示词、用户消息、AI消息）
+#           1. dict类型：{"role": "user", "content": "你是谁?"}
+#           2. tuple类型：("user", "你是谁？")
+#           3. 封装类：HumanMessage("你是谁？")
+#
+#   config: 调用时的配置，RunnableConfig类型
+#       configurable：调用时的配置，dict类型
+#           "thread_id": 会话id，，str类型用于保存和读取历史消息
+#
+#
+# stream(input,  stream_mode) 流式返回
+#   input       消息内容（同invoke方法）
+#   config      调用时的配置（同invoke方法）
+#   stream_mode 流式输出的模式
+#       "values"：提供 Agent 执行过程中，每一步之后的完整内部状态（State）作为输出。
+#       "messages":实时看到大模型“正在说什么”，实现打字机效果。
+#
+#
+# 可以使用BaseMessage的子类来封装传递不同角色的消息内容：AIMessage, HumanMessage, SystemMessage
 
-stream(input, stream_mode) 流式返回
-    stream_mode参数
-        "values"：提供 Agent 执行过程中，每一步之后的完整内部状态（State）作为输出。
-        "messages":实时看到大模型“正在说什么”，实现打字机效果。
-        
-
-可以使用BaseMessage的子类来封装传递不同角色的消息内容：AIMessage, HumanMessage, SystemMessage
-"""
-invoke_config = {"configurable": {"thread_id": "06021015"}}
+invoke_config = RunnableConfig(configurable={"thread_id": "06122100"})
 
 def test_invoke1():
     res = agent.invoke({
@@ -292,7 +307,7 @@ def test_invoke_structured_response_glby(query: str):
         "messages":[
             HumanMessage(query)
         ]
-    })
+    }, config=invoke_config)
     for message in res['messages']:
         message.pretty_print()
     print()
@@ -301,20 +316,20 @@ def test_invoke_structured_response_glby(query: str):
     answer = cast(GlbyAnswerInfo, res['structured_response'])
     print(f'已解析模型结构化输出: \n  当前心情值为{answer.feeling}\n  她说：{answer.content}')
 
-def test_invoke_checkpointer(query: str, invoke_config: Any):
+def test_invoke_checkpointer(query: str, config: RunnableConfig):
     data = {
         "messages":[
             HumanMessage(query)
         ],
     }
-    res = agent.invoke(data, config=invoke_config)
+    res = agent.invoke(data, config=config)
     # for message in res['messages']:
     #     message.pretty_print()
     print(f'调用结果：{res}')
 
 print('开始测试...')
 
-# test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
+test_invoke_structured_response_glby('我今天心情不好，你今天过得怎么样')
 # print(f'搜索工具测试：{search_tool.invoke("凑企鹅是什么梗？")}')
 
 # test_invoke_structured_response_glby('咕咕嘎嘎这个梗是什么意思？')

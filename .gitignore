@@ -13,3 +13,4 @@ wheels/
 .idea
 
 **/db
+**/logs/
