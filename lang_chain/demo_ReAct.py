@@ -2,6 +2,7 @@
 # Time  : 2026/6/12 16:28
 # Author: wanfeng
 import sqlite3
+from typing import Literal
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
@@ -10,8 +11,8 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langgraph.checkpoint.sqlite import SqliteSaver
+from pydantic import Field, BaseModel
 
-from lang_chain.demo_agent import WeatherInfo
 from lang_chain.init_chat_models import model_qwen_plus
 from lang_chain.utils import read_file_content
 from python_base.date_util import get_current_date_time
@@ -21,6 +22,12 @@ load_dotenv()
 
 
 model = model_qwen_plus()
+
+
+class WeatherInfo(BaseModel):
+    location: str = Field(description="地区名")
+    temperature_unit: Literal["摄氏度","华氏度"] = Field(description='温度单位', default="摄氏度")
+    is_include_humidity: bool = Field(description='是否查询湿度', default=False)
 
 @tool(args_schema=WeatherInfo)
 def get_weather_better(location: str, temperature_unit: str = "摄氏度", is_include_humidity: bool = False) -> str:
