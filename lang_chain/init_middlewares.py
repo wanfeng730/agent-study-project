@@ -61,8 +61,8 @@ def retry_on_error(
 @wrap_tool_call
 def log_tool_call(
         request: ToolCallRequest,
-        handler: Callable[[ToolCallRequest], ToolMessage | Command[Any]]
-) -> ToolMessage | Command[Any]:
+        handler: Callable[[ToolCallRequest], ToolMessage | Command]
+) -> ToolMessage | Command:
     logger.info(f'[Middleware: log_tool_call]: \n  request: {type(request)}\n  handler: {type(handler)}')
     # 调用的工具名、参数
     tool_name = request.tool_call['name']

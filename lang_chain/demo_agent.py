@@ -4,6 +4,7 @@ from typing import Any, Literal, cast
 from dotenv import load_dotenv
 import os
 
+from langchain_core.messages import AIMessageChunk, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_tavily import TavilySearch
 from pydantic import BaseModel, Field
@@ -220,16 +221,61 @@ print(f'智能体对象已创建: {type(agent)}')
 #
 #
 # stream(input,  stream_mode) 流式返回
-#   input       消息内容（同invoke方法）
-#   config      调用时的配置（同invoke方法）
-#   stream_mode 流式输出的模式
+#   input       dict类型，消息内容（同invoke方法）
+#   config      dict类型，调用时的配置（同invoke方法）
+#   stream_mode str类型，流式输出的模式
 #       "values"：提供 Agent 执行过程中，每一步之后的完整内部状态（State）作为输出。
 #       "messages":实时看到大模型“正在说什么”，实现打字机效果。
+#   context     dict类型，可以自定义的数据（添加一些标记），在中间件的request参数中获取使用
+#
+#   对于返回的Iterable元素（data）的类型
+#       - stream_mode="messages":   data 是 (AIMessageChunk, dict) 元组。AIMessageChunk是一个token的信息，dict是元数据信息的字典
+#       - stream_mode="values":     data 是 { 'messages': [...], ...} 字典。messages列表中会包含HumanMessage、ToolMessage、AIMessage
 #
 #
 # 可以使用BaseMessage的子类来封装传递不同角色的消息内容：AIMessage, HumanMessage, SystemMessage
 
 invoke_config = RunnableConfig(configurable={"thread_id": "06122100"})
+
+def test_stream(query: str):
+    res = agent.stream({
+        "messages": [
+            {"role": "user", "content": query}
+        ]
+    }, stream_mode='messages')
+    print(f'模型调用返回：{type(res)}')
+
+    for data in res:
+        ### 对stream_mode="messages"的处理
+        chunk: AIMessageChunk = data[0] # AI回答片段
+        metadata = data[1]  # 元数据
+        # 模型返回内容
+        content = str(chunk.content) if chunk.content else ''
+        if content:
+            print(content, end='', flush=True)
+
+        ### stream_mode="values"的处理
+        # messages = data['messages'] # 对话列表
+        # latest_message = messages[-1] # 最近消息（HumanMessage、ToolMessage、AIMessage）
+        # content = str(latest_message.content) if latest_message.content else '' # 模型返回内容
+        #
+        # # 判断消息类型
+        # if isinstance(latest_message, AIMessage):
+        #     print(f"【content】\n{latest_message.content}")
+        #     print(f"【tool_calls】\n{latest_message.tool_calls or None}")
+        # elif isinstance(latest_message, ToolMessage):
+        #     print(f"【content】\n{latest_message.content}")
+        #     print(f"【name】\n{latest_message.name}")
+        # elif isinstance(latest_message, HumanMessage):
+        #     print(f"【content】\n{latest_message.content}")
+        # else:
+        #     print("未知类型")
+        #
+        # # 空字符串
+        # if not content:
+        #     continue
+        # # 模型回答结果
+        # yield content.strip()
 
 def test_invoke1():
     res = agent.invoke({
@@ -250,16 +296,7 @@ def test_stream():
         if token.content:
             print(token.content, end='', flush=True)
 
-def test_stream(query: str):
-    res = agent.stream({
-        "messages": [
-            {"role": "user", "content": query}
-        ]
-    }, stream_mode='messages')
-    print(f'模型调用返回：{type(res)}')
-    for token, metadata in res:
-        if token.content:
-            print(token.content, end='', flush=True)
+
 
 def test_invoke2():
     res = agent.invoke({
