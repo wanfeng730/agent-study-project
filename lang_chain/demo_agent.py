@@ -34,20 +34,35 @@ load_dotenv()
 init_root_logger("logs/demo_agent.log")
 
 ### 一、初始化模型
-"""
-三种方式
-（1）根据模型名称自动判断模型并设定base_url，从环境变量中获取api_key
-（2）如果langchain没有集成但是兼容了OpenAI的规范，则需要手动设置参数（伪装）
-（3）从langchain的社区包中寻找模型类，例如通义千问（官方文档：https://reference.langchain.com/python/langchain-community/chat-models）
+# 三种方式
+# （1）根据模型名称自动判断模型并设定base_url，从环境变量中获取api_key
+# （2）如果langchain没有集成但是兼容了OpenAI的规范，则需要手动设置参数（伪装）
+# （3）从langchain的社区包中寻找模型类，例如通义千问（官方文档：https://reference.langchain.com/python/langchain-community/chat-models）
+#
+#
+# 模型参数设置（以阿里云的 OpenAI兼容-Chat 为例：https://bailian.console.aliyun.com/cn-beijing?spm=5176.29597918.J_F4r-7Zs_PtjrjEY48APSA.d_primary.6c1c133c02tP2r&tab=api&accounttraceid=b0220dbdc69c453d91d90ca505806dfeoobl#/api/?type=model&url=3016807）
+#   temperature：temperature越高，生成的文本更多样，反之，生成的文本更确定。（一般为0~2的小数）
+#
+#   seed: 随机数种子（integer，正数）。
+#       - 若seed相同 且其他参数不变，模型将尽可能返回相同结果。
+#       - 若seed不同，模型返回结果一定不同
+#
+#   top_p: top_p越高，生成的文本更多样。反之，生成的文本更确定。 取值范围：（0,1.0]
+#       - temperature与top_p均可以控制生成文本的多样性，建议只设置其中一个值。
+#   top_k：生成过程中用于采样的候选 Token 数量。值越大，输出越随机；值越小，输出越确定。
+#       - 该参数非OpenAI标准参数。通过 Python SDK调用时，请放入 extra_body 对象中。
+#       - 仅 top_p 策略生效。取值必须为大于或等于 0 的整数。
+#       - 若设为 null 或大于 100，则禁用 top_k 策略
+#
+#   presence_penalty：输出文本的内容重复度。取值范围：[-2.0, 2.0]。正值降低重复度，负值增加重复度。
+#       - 在创意写作或头脑风暴等需要多样性、趣味性或创造力的场景中，建议调高该值，降低重复度
+#       - 在技术文档或正式文本等强调一致性与术语准确性的场景中，建议调低该值，增加重复度
+#
+#   max_tokens: 输出结果的最大token数
+#   timeout：控制生成文本的超时时间
+#   max_retries: 控制生成文本的最大重试次数
+#   ...
 
-模型参数设置
-    temperature：控制生成文本的随机性，值越大范围越大（一般为0~2的小数）
-    max_tokens: 控制生成文本的最大token数
-    top_p: 控制生成文本的多样性,值越小越多样，值越大越确定
-    timeout：控制生成文本的超时时间
-    max_retries: 控制生成文本的最大重试次数
-    ...
-"""
 # model = init_chat_model(model='deepseek-v4-pro')
 
 # model = init_chat_model(
@@ -75,6 +90,7 @@ model = init_chat_model(
     api_key=os.getenv('DASHSCOPE_API_KEY'),
 
     temperature=1.5,
+    seed=21,
     max_tokens=4096,
     top_p=0.9,
     timeout=60,
